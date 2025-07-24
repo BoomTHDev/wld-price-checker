@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -42,7 +43,7 @@ var (
 func ConfigGetting() *Config {
 	once.Do(func() {
 		if err := godotenv.Load(); err != nil {
-			panic(err)
+			log.Println("No .env file found, using environment variables")
 		}
 
 		configInstance = &Config{
