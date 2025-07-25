@@ -2,6 +2,8 @@ module github.com/boomthdev/wld-price-cheker
 
 go 1.24.4
 
+// +heroku goVersion go1.22
+
 require (
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/gofiber/fiber/v2 v2.52.9
