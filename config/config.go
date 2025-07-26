@@ -52,7 +52,7 @@ func ConfigGetting() *Config {
 			TelegramEnv: &TelegramEnv{},
 		}
 
-		port, err := strconv.Atoi(getEnv("SERVER_PORT", "8080"))
+		port, err := strconv.Atoi(getEnv("SERVER_PORT", "10000"))
 		if err != nil {
 			panic("Invalid SERVER_PORT in .env file")
 		}
