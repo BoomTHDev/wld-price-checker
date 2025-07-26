@@ -48,6 +48,7 @@ func (s *fiberServer) setupCron() {
 		log.Println("API_URL is not set")
 		return
 	}
+	fmt.Println(apiURL)
 
 	cron.Every("14m").Do(func() {
 		log.Println("Running scheduled task at", time.Now().Format("2006-01-02 15:04:05"))
