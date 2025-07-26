@@ -3,11 +3,14 @@ package server
 import (
 	"fmt"
 	"log"
+	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/boomthdev/wld-price-cheker/config"
+	"github.com/go-co-op/gocron"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -38,6 +41,33 @@ func NewFiberServer(conf *config.Config) *fiberServer {
 	return serverInstance
 }
 
+func (s *fiberServer) setupCron() {
+	cron := gocron.NewScheduler(time.UTC)
+	apiURL := fmt.Sprintf("%s/health-check", os.Getenv("API_URL"))
+	if apiURL == "" {
+		log.Println("API_URL is not set")
+		return
+	}
+
+	cron.Every("14m").Do(func() {
+		log.Println("Running scheduled task at", time.Now().Format("2006-01-02 15:04:05"))
+
+		client := http.Client{
+			Timeout: 30 * time.Second,
+		}
+
+		resp, err := client.Get(apiURL)
+		if err != nil {
+			log.Println("Error running scheduled task:", err)
+			return
+		}
+
+		defer resp.Body.Close()
+	})
+
+	cron.StartAsync()
+}
+
 func (s *fiberServer) Start() {
 	s.app.Use(logger.New())
 	s.app.Use(cors.New(cors.Config{
@@ -50,7 +80,6 @@ func (s *fiberServer) Start() {
 	s.app.Get("/health-check", s.healthCheck)
 	s.initCoinRouter()
 	s.initTelegramRouter()
-	go s.sendNotificate()
 
 	s.app.Use(func(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -58,7 +87,8 @@ func (s *fiberServer) Start() {
 			"message": fmt.Sprintf("Sorry, endpoint %s %s not found.", ctx.Method(), ctx.Path()),
 		})
 	})
-
+	go s.sendNotificate()
+	go s.setupCron()
 	s.httpListening()
 }
 
