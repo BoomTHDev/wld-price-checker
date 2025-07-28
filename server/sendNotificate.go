@@ -22,20 +22,25 @@ func (s *fiberServer) sendNotificate() {
 		price, err := coinService.GetWorldcoinPrice()
 		if err != nil {
 			log.Printf("failed to get price: %v\n", err)
-			return
+			time.Sleep(60 * time.Second)
+			continue
 		}
 
+		// Broadcast price to all WebSocket clients
+		s.hub.broadcast <- price
+
+		// Send Telegram notification if price is above target
 		if price >= targetPrice && time.Since(lastNotified) >= 60*time.Second {
 			telegramRepository := _telegramRepository.NewTelegramRepository(s.conf.TelegramEnv.BotToken, s.conf.TelegramEnv.ChatID)
 			telegramService := _telegramService.NewTelegramService(telegramRepository, coinRepository)
 			if err := telegramService.SendPriceUpdate(); err != nil {
 				log.Printf("failed to send telegram: %v\n", err)
 			} else {
-				log.Println("Notification sent!")
+				log.Println("Telegram notification sent!")
 				lastNotified = time.Now()
 			}
 		}
 
-		time.Sleep(60 * time.Second)
+		time.Sleep(10 * time.Second) // Check more frequently for real-time updates
 	}
 }

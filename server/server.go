@@ -5,12 +5,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/boomthdev/wld-price-cheker/config"
 	"github.com/go-co-op/gocron"
+	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -19,6 +19,7 @@ import (
 type fiberServer struct {
 	app  *fiber.App
 	conf *config.Config
+	hub *Hub
 }
 
 var (
@@ -32,10 +33,14 @@ func NewFiberServer(conf *config.Config) *fiberServer {
 	})
 
 	once.Do(func() {
+		hub := NewHub()
 		serverInstance = &fiberServer{
 			app:  fiberApp,
 			conf: conf,
+			hub:  hub,
 		}
+		// Start the hub
+		go hub.Run()
 	})
 
 	return serverInstance
@@ -72,12 +77,19 @@ func (s *fiberServer) setupCron() {
 func (s *fiberServer) Start() {
 	s.app.Use(logger.New())
 	s.app.Use(cors.New(cors.Config{
-		AllowOrigins:     strings.Join(s.conf.Server.AllowOrigins, ","),
-		AllowMethods:     "GET",
-		AllowHeaders:     "Origin,Content-Type,Accept",
-		AllowCredentials: false,
+		AllowOrigins: "*",
+		AllowHeaders: "Origin, Content-Type, Accept",
 	}))
 
+	// WebSocket upgrade middleware
+	s.app.Use("/ws", func(c *fiber.Ctx) error {
+		if websocket.IsWebSocketUpgrade(c) {
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
+
+	s.app.Get("/ws/price", websocket.New(s.handleWebSocket))
 	s.app.Get("/health-check", s.healthCheck)
 	s.initCoinRouter()
 	s.initTelegramRouter()
