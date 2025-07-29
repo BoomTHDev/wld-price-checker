@@ -41,6 +41,6 @@ func (s *fiberServer) sendNotificate() {
 			}
 		}
 
-		time.Sleep(10 * time.Second) // Check more frequently for real-time updates
+		time.Sleep(180 * time.Second) // Check every 3 minutes
 	}
 }
